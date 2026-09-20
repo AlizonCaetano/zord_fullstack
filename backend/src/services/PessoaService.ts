@@ -46,6 +46,11 @@ export class PessoaService {
       throw new CpfInvalidoError();
     }
 
+    const outraPessoaComMesmoCpf = await this.repository.buscarPorCpf(cpf);
+    if (outraPessoaComMesmoCpf && outraPessoaComMesmoCpf.id !== id) {
+      throw new CpfDuplicadoError();
+    }
+
     const atualizada = await this.repository.atualizar(id, { nome, cpf });
     return atualizada as Pessoa;
   }

@@ -1,9 +1,9 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "src/server.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "docker:up": "docker compose -f ../docker-compose.yml up -d",
@@ -35,7 +35,7 @@
     "jsonwebtoken": "^9.0.3",
     "pg": "^8.23.0",
     "reflect-metadata": "^0.2.2",
-    "typeorm": "^1.1.1",
+    "typeorm": "^0.3.31",
     "zod": "^4.6.5"
   }
 }
