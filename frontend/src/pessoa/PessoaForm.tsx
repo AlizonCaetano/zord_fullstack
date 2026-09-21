@@ -1,20 +1,27 @@
-import { useFieldArray, useForm, useWatch } from "react-hook-form";
+import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Campo } from "@/shared/Campo";
+import { RodapeFormulario } from "@/shared/RodapeFormulario";
+import { SelectSimples } from "@/shared/SelectSimples";
 import { formatarCpf } from "@/shared/validadores";
 import {
-  LIMITE_CONTATOS_POR_TIPO,
+  TIPOS_CONTATO,
   contatoFormSchema,
-  pessoaFormSchema,
-} from "@/pessoa/pessoa.schema";
+  tipoContatoSchema,
+} from "@/contato/contato.validation";
 import type {
   ContatoFormValores,
-  PessoaFormValores,
   TipoContato,
-} from "@/pessoa/pessoa.schema";
+} from "@/contato/contato.validation";
+import {
+  LIMITE_CONTATOS_POR_TIPO,
+  pessoaFormSchema,
+} from "@/pessoa/pessoa.validation";
+import type { PessoaFormValores } from "@/pessoa/pessoa.validation";
 
 type PessoaFormProps = {
   modo: "criar" | "editar";
@@ -25,18 +32,6 @@ type PessoaFormProps = {
   onCancelar: () => void;
   onExcluir?: () => void;
 };
-
-const campoSelect: string =
-  "h-10 rounded-md border border-input bg-background/40 px-3 text-sm text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring";
-
-function MensagemErro({
-  mensagem,
-}: {
-  mensagem: string | undefined;
-}): React.JSX.Element | null {
-  if (!mensagem) return null;
-  return <p className="text-xs text-brand-red">{mensagem}</p>;
-}
 
 export function PessoaForm({
   modo,
@@ -89,10 +84,7 @@ export function PessoaForm({
       noValidate
       className="flex flex-col gap-5"
     >
-      <div className="flex flex-col gap-2">
-        <label htmlFor="nome" className="text-sm text-muted-foreground">
-          Nome
-        </label>
+      <Campo id="nome" rotulo="Nome" erro={errors.nome?.message}>
         <Input
           id="nome"
           placeholder="Nome completo"
@@ -100,13 +92,9 @@ export function PessoaForm({
           aria-invalid={errors.nome ? true : undefined}
           {...register("nome")}
         />
-        <MensagemErro mensagem={errors.nome?.message} />
-      </div>
+      </Campo>
 
-      <div className="flex flex-col gap-2">
-        <label htmlFor="cpf" className="text-sm text-muted-foreground">
-          CPF
-        </label>
+      <Campo id="cpf" rotulo="CPF" erro={errors.cpf?.message}>
         <Input
           id="cpf"
           placeholder="000.000.000-00"
@@ -118,35 +106,42 @@ export function PessoaForm({
             void cpfRegistro.onChange(evento);
           }}
         />
-        <MensagemErro mensagem={errors.cpf?.message} />
-      </div>
+      </Campo>
 
       {modo === "criar" && (
         <fieldset className="flex flex-col gap-3 border-t pt-5">
           <div className="flex items-baseline justify-between">
             <legend className="text-sm text-muted-foreground">Contatos</legend>
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs tabular-nums text-muted-foreground">
               {telefones}/{LIMITE_CONTATOS_POR_TIPO} tel · {emails}/
               {LIMITE_CONTATOS_POR_TIPO} e-mail
             </span>
           </div>
 
-          {fields.map((field, index: number) => {
+          {fields.map((item, index: number) => {
             const tipoAtual: TipoContato = contatos[index]?.tipo ?? "telefone";
             const erroDescricao: string | undefined =
               errors.contatos?.[index]?.descricao?.message;
 
             return (
-              <div key={field.id} className="flex flex-col gap-1">
+              <div key={item.id} className="flex flex-col gap-1">
                 <div className="flex items-start gap-2">
-                  <select
-                    aria-label={`Tipo do contato ${index + 1}`}
-                    className={`${campoSelect} w-32 shrink-0`}
-                    {...register(`contatos.${index}.tipo`)}
-                  >
-                    <option value="telefone">Telefone</option>
-                    <option value="email">E-mail</option>
-                  </select>
+                  <Controller
+                    control={control}
+                    name={`contatos.${index}.tipo`}
+                    render={({ field }) => (
+                      <SelectSimples
+                        ariaLabel={`Tipo do contato ${index + 1}`}
+                        opcoes={TIPOS_CONTATO}
+                        valor={field.value}
+                        onAlterar={(valor) => {
+                          const resultado = tipoContatoSchema.safeParse(valor);
+                          if (resultado.success) field.onChange(resultado.data);
+                        }}
+                        className="w-32 shrink-0"
+                      />
+                    )}
+                  />
                   <Input
                     aria-label={`Descrição do contato ${index + 1}`}
                     placeholder={
@@ -158,21 +153,27 @@ export function PessoaForm({
                     aria-invalid={erroDescricao ? true : undefined}
                     {...register(`contatos.${index}.descricao`)}
                   />
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon"
                     onClick={() => remove(index)}
                     aria-label={`Remover contato ${index + 1}`}
-                    className="inline-flex size-10 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                    className="shrink-0 text-muted-foreground"
                   >
-                    <X className="size-4" />
-                  </button>
+                    <X />
+                  </Button>
                 </div>
-                <MensagemErro mensagem={erroDescricao} />
+                {erroDescricao && (
+                  <p className="text-xs text-brand-red">{erroDescricao}</p>
+                )}
               </div>
             );
           })}
 
-          <MensagemErro mensagem={erroListaContatos} />
+          {erroListaContatos && (
+            <p className="text-xs text-brand-red">{erroListaContatos}</p>
+          )}
 
           <div className="flex flex-col items-start gap-1">
             <Button
@@ -202,23 +203,11 @@ export function PessoaForm({
         </p>
       )}
 
-      <div className="mt-2 flex items-center justify-between border-t pt-5">
-        {modo === "editar" && onExcluir ? (
-          <Button type="button" variant="ghostDestructive" onClick={onExcluir}>
-            Excluir
-          </Button>
-        ) : (
-          <span />
-        )}
-        <div className="flex gap-3">
-          <Button type="button" variant="outline" onClick={onCancelar}>
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={salvando}>
-            {salvando ? "Salvando..." : "Salvar"}
-          </Button>
-        </div>
-      </div>
+      <RodapeFormulario
+        salvando={salvando}
+        onCancelar={onCancelar}
+        onExcluir={modo === "editar" ? onExcluir : undefined}
+      />
     </form>
   );
 }

@@ -1,19 +1,30 @@
 import { useCallback, useEffect, useState } from "react";
+import { Eye, Pencil } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Avatar } from "@/shared/Avatar";
 import { ConfirmDialog } from "@/shared/ConfirmDialog";
+import { ContatoIcone } from "@/shared/ContatoIcone";
 import { DataTable } from "@/shared/DataTable";
 import type { Column } from "@/shared/DataTable";
 import { EstadoVazio } from "@/shared/EstadoVazio";
-import { Modal } from "@/shared/Modal";
+import { ListaSkeleton } from "@/shared/ListaSkeleton";
 import { PageHeader } from "@/shared/PageHeader";
 import { RowMenu } from "@/shared/RowMenu";
 import { SearchInput } from "@/shared/SearchInput";
 import { ApiError } from "@/shared/api";
 import { formatarCpf, somenteDigitos } from "@/shared/validadores";
+import { PessoaDetalhe } from "@/pessoa/PessoaDetalhe";
 import { PessoaForm } from "@/pessoa/PessoaForm";
-import type { PessoaFormValores } from "@/pessoa/pessoa.schema";
+import type { PessoaFormValores } from "@/pessoa/pessoa.validation";
 import {
   atualizarPessoa,
   criarPessoa,
@@ -28,11 +39,40 @@ const valoresNovaPessoa: PessoaFormValores = {
   contatos: [],
 };
 
+function ResumoContatos({ pessoa }: { pessoa: Pessoa }): React.JSX.Element {
+  const emails: number = pessoa.contatos.filter((c) => c.tipo).length;
+  const telefones: number = pessoa.contatos.length - emails;
+
+  if (pessoa.contatos.length === 0) {
+    return <span className="text-xs text-muted-foreground">Sem contatos</span>;
+  }
+
+  return (
+    <div className="flex gap-1.5">
+      {telefones > 0 && (
+        <Badge variant="outline" className="gap-1 font-normal tabular-nums">
+          <ContatoIcone email={false} className="size-3" />
+          {telefones}
+        </Badge>
+      )}
+      {emails > 0 && (
+        <Badge variant="outline" className="gap-1 font-normal tabular-nums">
+          <ContatoIcone email className="size-3" />
+          {emails}
+        </Badge>
+      )}
+    </div>
+  );
+}
+
 export function PessoaPage(): React.JSX.Element {
   const [pessoas, setPessoas] = useState<Pessoa[]>([]);
   const [carregando, setCarregando] = useState<boolean>(true);
   const [erroLista, setErroLista] = useState<string | null>(null);
   const [busca, setBusca] = useState<string>("");
+
+  const [detalhe, setDetalhe] = useState<Pessoa | null>(null);
+  const [detalheAberto, setDetalheAberto] = useState<boolean>(false);
 
   const [emEdicao, setEmEdicao] = useState<Pessoa | null>(null);
   const [criando, setCriando] = useState<boolean>(false);
@@ -61,21 +101,27 @@ export function PessoaPage(): React.JSX.Element {
     void carregar();
   }, [carregar]);
 
+  const abrirDetalhe = (pessoa: Pessoa): void => {
+    setDetalhe(pessoa);
+    setDetalheAberto(true);
+  };
+
   const abrirCriacao = (): void => {
     setErroServidor(null);
     setCriando(true);
   };
 
   const abrirEdicao = (pessoa: Pessoa): void => {
+    setDetalheAberto(false);
     setErroServidor(null);
     setEmEdicao(pessoa);
   };
 
-  const fecharFormulario = useCallback((): void => {
+  const fecharFormulario = (): void => {
     setCriando(false);
     setEmEdicao(null);
     setErroServidor(null);
-  }, []);
+  };
 
   const salvar = async (valores: PessoaFormValores): Promise<void> => {
     setSalvando(true);
@@ -121,33 +167,57 @@ export function PessoaPage(): React.JSX.Element {
     }
   };
 
-  const filtradas: Pessoa[] = pessoas.filter((pessoa) =>
-    pessoa.nome.toLowerCase().includes(busca.toLowerCase()),
+  const termo: string = busca.trim().toLowerCase();
+  const termoDigitos: string = somenteDigitos(busca);
+  const filtradas: Pessoa[] = pessoas.filter(
+    (pessoa) =>
+      pessoa.nome.toLowerCase().includes(termo) ||
+      (termoDigitos !== "" && pessoa.cpf.includes(termoDigitos)),
   );
 
   const columns: Column<Pessoa>[] = [
     {
-      key: "nome",
-      header: "Nome",
+      key: "pessoa",
+      header: "Pessoa",
       render: (p) => (
         <div className="flex items-center gap-3">
           <Avatar nome={p.nome} />
-          <span>{p.nome}</span>
+          <div className="min-w-0">
+            <p className="truncate font-medium">{p.nome}</p>
+            <p className="text-xs tabular-nums text-muted-foreground">
+              {formatarCpf(p.cpf)}
+            </p>
+          </div>
         </div>
       ),
       sortValue: (p) => p.nome,
     },
     {
-      key: "cpf",
-      header: "CPF",
-      render: (p) => formatarCpf(p.cpf),
-      sortValue: (p) => p.cpf,
+      key: "contatos",
+      header: "Contatos",
+      render: (p) => <ResumoContatos pessoa={p} />,
+      sortValue: (p) => p.contatos.length,
     },
     {
       key: "acoes",
-      header: "",
+      header: "Ações",
+      acao: true,
       render: (p) => (
-        <RowMenu onEditar={() => abrirEdicao(p)} label={`Ações de ${p.nome}`} />
+        <RowMenu
+          label={`Ações de ${p.nome}`}
+          acoes={[
+            {
+              label: "Ver detalhes",
+              icone: Eye,
+              onSelecionar: () => abrirDetalhe(p),
+            },
+            {
+              label: "Editar",
+              icone: Pencil,
+              onSelecionar: () => abrirEdicao(p),
+            },
+          ]}
+        />
       ),
     },
   ];
@@ -169,13 +239,11 @@ export function PessoaPage(): React.JSX.Element {
         <SearchInput
           value={busca}
           onChange={setBusca}
-          placeholder="Pesquisar por nome"
+          placeholder="Pesquisar por nome ou CPF"
         />
 
         {carregando ? (
-          <p className="py-16 text-center text-sm text-muted-foreground">
-            Carregando...
-          </p>
+          <ListaSkeleton />
         ) : erroLista ? (
           <div className="flex flex-col items-center gap-4 py-16">
             <p className="text-sm text-brand-red">{erroLista}</p>
@@ -186,33 +254,56 @@ export function PessoaPage(): React.JSX.Element {
         ) : pessoas.length === 0 ? (
           <EstadoVazio
             titulo="Nenhuma pessoa cadastrada"
-            descricao="Cadastre a primeira pessoa para começar a montar a agenda."
+            descricao="Cadastre a primeira pessoa, já com telefones e e-mails."
           />
         ) : (
           <DataTable
             columns={columns}
             rows={filtradas}
             getRowId={(p) => p.id}
+            onRowClick={abrirDetalhe}
           />
         )}
       </main>
 
-      <Modal
-        aberto={formularioAberto}
-        titulo={emEdicao ? "Editar pessoa" : "Nova pessoa"}
-        onFechar={fecharFormulario}
+      <PessoaDetalhe
+        pessoa={detalhe}
+        aberto={detalheAberto}
+        onFechar={() => setDetalheAberto(false)}
+        onEditar={abrirEdicao}
+      />
+
+      <Dialog
+        open={formularioAberto}
+        onOpenChange={(abrir: boolean) => {
+          if (!abrir) fecharFormulario();
+        }}
       >
-        <PessoaForm
-          key={emEdicao?.id ?? "nova"}
-          modo={emEdicao ? "editar" : "criar"}
-          valoresIniciais={valoresIniciais}
-          erroServidor={erroServidor}
-          salvando={salvando}
-          onSalvar={(valores) => void salvar(valores)}
-          onCancelar={fecharFormulario}
-          onExcluir={emEdicao ? () => setConfirmandoExclusao(true) : undefined}
-        />
-      </Modal>
+        <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-serif text-2xl font-medium">
+              {emEdicao ? "Editar pessoa" : "Nova pessoa"}
+            </DialogTitle>
+            <DialogDescription>
+              {emEdicao
+                ? "Contatos são gerenciados na tela de Contatos."
+                : "Os contatos são gravados junto com a pessoa."}
+            </DialogDescription>
+          </DialogHeader>
+          <PessoaForm
+            key={emEdicao?.id ?? "nova"}
+            modo={emEdicao ? "editar" : "criar"}
+            valoresIniciais={valoresIniciais}
+            erroServidor={erroServidor}
+            salvando={salvando}
+            onSalvar={(valores) => void salvar(valores)}
+            onCancelar={fecharFormulario}
+            onExcluir={
+              emEdicao ? () => setConfirmandoExclusao(true) : undefined
+            }
+          />
+        </DialogContent>
+      </Dialog>
 
       <ConfirmDialog
         aberto={confirmandoExclusao}

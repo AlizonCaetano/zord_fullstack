@@ -1,9 +1,16 @@
 import { apiFetch } from "@/shared/api";
 
+export type ContatoResumo = {
+  id: number;
+  tipo: boolean;
+  descricao: string;
+};
+
 export type Pessoa = {
   id: number;
   nome: string;
   cpf: string;
+  contatos: ContatoResumo[];
 };
 
 export type NovoContato = {
