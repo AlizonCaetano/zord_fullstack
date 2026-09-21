@@ -9,7 +9,7 @@ const linkClass = ({ isActive }: { isActive: boolean }): string =>
   cn(
     "relative px-1 py-2 text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
     isActive
-      ? "text-foreground after:absolute after:inset-x-0 after:-bottom-px after:h-px after:bg-brand-gold"
+      ? "text-foreground after:absolute after:inset-x-0 after:-bottom-px after:h-px after:bg-foreground"
       : "text-muted-foreground hover:text-foreground",
   );
 
@@ -23,11 +23,11 @@ export function AppLayout(): React.JSX.Element {
   };
 
   return (
-    <div className="ambient min-h-svh p-3 md:p-4">
-      <div className="glass-panel mx-auto flex min-h-[calc(100svh-1.5rem)] max-w-6xl flex-col rounded-md md:min-h-[calc(100svh-2rem)]">
-        <nav className="flex items-center justify-between gap-6 border-b px-8 py-5">
+    <div className="ambient min-h-svh sm:p-3 md:p-4">
+      <div className="glass-panel mx-auto flex min-h-svh max-w-6xl flex-col sm:min-h-[calc(100svh-1.5rem)] sm:rounded-md md:min-h-[calc(100svh-2rem)]">
+        <nav className="flex items-center justify-between gap-4 border-b px-4 py-4 md:px-8 md:py-5">
           <Wordmark />
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4 md:gap-6">
             <NavLink to="/pessoas" className={linkClass}>
               Pessoas
             </NavLink>
@@ -37,10 +37,11 @@ export function AppLayout(): React.JSX.Element {
             <button
               type="button"
               onClick={sair}
+              aria-label="Sair"
               className="inline-flex items-center gap-2 rounded-md px-1 py-2 text-sm text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
             >
               <LogOut className="size-4" />
-              Sair
+              <span className="hidden sm:inline">Sair</span>
             </button>
           </div>
         </nav>

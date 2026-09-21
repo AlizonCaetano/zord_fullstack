@@ -1,5 +1,13 @@
-import { Button } from "@/components/ui/button";
-import { Modal } from "@/shared/Modal";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type ConfirmDialogProps = {
   aberto: boolean;
@@ -19,16 +27,26 @@ export function ConfirmDialog({
   onCancelar,
 }: ConfirmDialogProps): React.JSX.Element {
   return (
-    <Modal aberto={aberto} titulo={titulo} onFechar={onCancelar}>
-      <p className="text-sm text-muted-foreground">{mensagem}</p>
-      <div className="mt-8 flex justify-end gap-3">
-        <Button variant="outline" onClick={onCancelar}>
-          Cancelar
-        </Button>
-        <Button variant="destructive" onClick={onConfirmar}>
-          {textoConfirmar}
-        </Button>
-      </div>
-    </Modal>
+    <AlertDialog
+      open={aberto}
+      onOpenChange={(abrir: boolean) => {
+        if (!abrir) onCancelar();
+      }}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="font-serif text-xl font-medium">
+            {titulo}
+          </AlertDialogTitle>
+          <AlertDialogDescription>{mensagem}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction variant="destructive" onClick={onConfirmar}>
+            {textoConfirmar}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
