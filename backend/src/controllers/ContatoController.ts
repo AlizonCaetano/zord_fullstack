@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { ZodError } from "zod";
 import { ContatoService } from "../services/ContatoService";
 import { ContatoRepository } from "../repositories/ContatoRepository";
 import { PessoaRepository } from "../repositories/PessoaRepository";
@@ -26,6 +27,12 @@ export class ContatoController {
       );
       res.status(201).json(contato);
     } catch (err) {
+      if (err instanceof ZodError) {
+        res
+          .status(400)
+          .json({ message: "Dados inválidos", issues: err.issues });
+        return;
+      }
       if (err instanceof PessoaNaoEncontradaError) {
         res.status(404).json({ message: (err as Error).message });
         return;
@@ -58,6 +65,12 @@ export class ContatoController {
       );
       res.status(200).json(contato);
     } catch (err) {
+      if (err instanceof ZodError) {
+        res
+          .status(400)
+          .json({ message: "Dados inválidos", issues: err.issues });
+        return;
+      }
       if (err instanceof ContatoNaoEncontradoError) {
         res.status(404).json({ message: (err as Error).message });
         return;

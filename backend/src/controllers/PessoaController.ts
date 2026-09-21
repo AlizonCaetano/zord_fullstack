@@ -58,6 +58,12 @@ export class PessoaController {
       );
       res.status(200).json(pessoa);
     } catch (err) {
+      if (err instanceof ZodError) {
+        res
+          .status(400)
+          .json({ message: "Dados inválidos", issues: err.issues });
+        return;
+      }
       if (err instanceof PessoaNaoEncontradaError) {
         res.status(404).json({ message: (err as Error).message });
         return;
