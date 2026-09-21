@@ -1,0 +1,9 @@
+{
+  "name": "zord_fullstack",
+  "private": true,
+  "scripts": {
+    "dev": "docker compose up --build",
+    "down": "docker compose down",
+    "test": "npm --prefix backend test"
+  }
+}
