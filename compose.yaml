@@ -10,6 +10,51 @@ services:
       - "5454:5432"
     volumes:
       - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d magazord"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: magazord_backend
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASS=postgres
+      - DB_NAME=magazord
+      - JWT_SECRET=uma_chave_secreta_qualquer_aqui
+      - PORT=3000
+      - AUTH_USER=admin
+      - AUTH_PASS=senha123
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./backend/src:/app/src
+    depends_on:
+      db:
+        condition: service_healthy
+    command: sh -c "npm run migration:run && npx tsx watch src/server.ts"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: magazord_frontend
+    environment:
+      - VITE_API_URL=http://backend:3000
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/index.html:/app/index.html
+    depends_on:
+      - backend
+    command: npm run dev -- --host 0.0.0.0
 
 volumes:
   pgdata:
