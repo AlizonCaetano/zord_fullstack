@@ -20,11 +20,15 @@ export class ContatoRepository {
   async listarPorPessoa(idPessoa: number): Promise<Contato[]> {
     return this.repository.find({
       where: { pessoa: { id: idPessoa } },
+      order: { id: "ASC" },
     });
   }
 
   async listarTodos(): Promise<Contato[]> {
-    return this.repository.find();
+    return this.repository.find({
+      relations: { pessoa: true },
+      order: { id: "ASC" },
+    });
   }
 
   async contarPorPessoaETipo(idPessoa: number, tipo: boolean): Promise<number> {

@@ -1,9 +1,14 @@
 import { ContatoRepository } from "../repositories/ContatoRepository";
 import { PessoaRepository } from "../repositories/PessoaRepository";
 import { Contato } from "../entities/Contato";
+import { Pessoa } from "../entities/Pessoa";
+import { validarDescricaoContato } from "../utils/validarContato";
 import { ContatoNaoEncontradoError } from "../errors/ContatoNaoEncontradoError";
+import { ContatoInvalidoError } from "../errors/ContatoInvalidoError";
 import { PessoaNaoEncontradaError } from "../errors/PessoaNaoEncontradaError";
 import { LimiteContatoExcedidoError } from "../errors/LimiteContatoExcedidoError";
+
+const LIMITE_CONTATOS_POR_TIPO: number = 5;
 
 export class ContatoService {
   constructor(
@@ -16,20 +21,23 @@ export class ContatoService {
     tipo: boolean,
     descricao: string,
   ): Promise<Contato> {
-    const pessoa = await this.pessoaRepository.buscarPorId(idPessoa);
+    if (!validarDescricaoContato(tipo, descricao)) {
+      throw new ContatoInvalidoError();
+    }
+
+    const pessoa: Pessoa | null =
+      await this.pessoaRepository.buscarPorId(idPessoa);
     if (!pessoa) {
       throw new PessoaNaoEncontradaError();
     }
 
-    const quantidade = await this.contatoRepository.contarPorPessoaETipo(
-      idPessoa,
-      tipo,
-    );
-    if (quantidade >= 5) {
+    const quantidade: number =
+      await this.contatoRepository.contarPorPessoaETipo(idPessoa, tipo);
+    if (quantidade >= LIMITE_CONTATOS_POR_TIPO) {
       throw new LimiteContatoExcedidoError();
     }
 
-    const contato = new Contato();
+    const contato: Contato = new Contato();
     contato.tipo = tipo;
     contato.descricao = descricao;
     contato.pessoa = pessoa;
@@ -38,18 +46,28 @@ export class ContatoService {
   }
 
   async atualizarContato(id: number, descricao: string): Promise<Contato> {
-    const contato = await this.contatoRepository.buscarPorId(id);
+    const contato: Contato | null =
+      await this.contatoRepository.buscarPorId(id);
     if (!contato) {
       throw new ContatoNaoEncontradoError();
     }
-    const atualizado = await this.contatoRepository.atualizar(id, {
-      descricao,
-    });
-    return atualizado as Contato;
+    if (!validarDescricaoContato(contato.tipo, descricao)) {
+      throw new ContatoInvalidoError();
+    }
+
+    const atualizado: Contato | null = await this.contatoRepository.atualizar(
+      id,
+      { descricao },
+    );
+    if (!atualizado) {
+      throw new ContatoNaoEncontradoError();
+    }
+    return atualizado;
   }
 
   async deletarContato(id: number): Promise<void> {
-    const contato = await this.contatoRepository.buscarPorId(id);
+    const contato: Contato | null =
+      await this.contatoRepository.buscarPorId(id);
     if (!contato) {
       throw new ContatoNaoEncontradoError();
     }

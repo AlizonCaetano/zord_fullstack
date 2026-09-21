@@ -7,16 +7,42 @@ import {
   criarContatoSchema,
   atualizarContatoSchema,
 } from "./contato.validation";
-import { PessoaNaoEncontradaError } from "../errors/PessoaNaoEncontradaError";
+import { parseId } from "../utils/parseId";
 import { ContatoNaoEncontradoError } from "../errors/ContatoNaoEncontradoError";
+import { ContatoInvalidoError } from "../errors/ContatoInvalidoError";
+import { PessoaNaoEncontradaError } from "../errors/PessoaNaoEncontradaError";
 import { LimiteContatoExcedidoError } from "../errors/LimiteContatoExcedidoError";
 
-const contatoService = new ContatoService(
+const contatoService: ContatoService = new ContatoService(
   new ContatoRepository(),
   new PessoaRepository(),
 );
 
 export class ContatoController {
+  async listarTodos(_req: Request, res: Response): Promise<void> {
+    try {
+      const contatos = await contatoService.listarTodos();
+      res.status(200).json(contatos);
+    } catch {
+      res.status(500).json({ message: "Erro interno" });
+    }
+  }
+
+  async listarPorPessoa(req: Request, res: Response): Promise<void> {
+    const idPessoa: number | null = parseId(req.params.idPessoa);
+    if (idPessoa === null) {
+      res.status(400).json({ message: "Id inválido" });
+      return;
+    }
+
+    try {
+      const contatos = await contatoService.listarPorPessoa(idPessoa);
+      res.status(200).json(contatos);
+    } catch {
+      res.status(500).json({ message: "Erro interno" });
+    }
+  }
+
   async criar(req: Request, res: Response): Promise<void> {
     try {
       const dados = criarContatoSchema.parse(req.body);
@@ -34,30 +60,28 @@ export class ContatoController {
         return;
       }
       if (err instanceof PessoaNaoEncontradaError) {
-        res.status(404).json({ message: (err as Error).message });
+        res.status(404).json({ message: err.message });
         return;
       }
-      if (err instanceof LimiteContatoExcedidoError) {
-        res.status(422).json({ message: (err as Error).message });
+      if (
+        err instanceof ContatoInvalidoError ||
+        err instanceof LimiteContatoExcedidoError
+      ) {
+        res.status(422).json({ message: err.message });
         return;
       }
-      res.status(500).json({ message: "Erro interno" });
-    }
-  }
-
-  async listarPorPessoa(req: Request, res: Response): Promise<void> {
-    try {
-      const idPessoa = Number(req.params.idPessoa);
-      const contatos = await contatoService.listarPorPessoa(idPessoa);
-      res.status(200).json(contatos);
-    } catch (err) {
       res.status(500).json({ message: "Erro interno" });
     }
   }
 
   async atualizar(req: Request, res: Response): Promise<void> {
+    const id: number | null = parseId(req.params.id);
+    if (id === null) {
+      res.status(400).json({ message: "Id inválido" });
+      return;
+    }
+
     try {
-      const id = Number(req.params.id);
       const dados = atualizarContatoSchema.parse(req.body);
       const contato = await contatoService.atualizarContato(
         id,
@@ -72,7 +96,11 @@ export class ContatoController {
         return;
       }
       if (err instanceof ContatoNaoEncontradoError) {
-        res.status(404).json({ message: (err as Error).message });
+        res.status(404).json({ message: err.message });
+        return;
+      }
+      if (err instanceof ContatoInvalidoError) {
+        res.status(422).json({ message: err.message });
         return;
       }
       res.status(500).json({ message: "Erro interno" });
@@ -80,13 +108,18 @@ export class ContatoController {
   }
 
   async deletar(req: Request, res: Response): Promise<void> {
+    const id: number | null = parseId(req.params.id);
+    if (id === null) {
+      res.status(400).json({ message: "Id inválido" });
+      return;
+    }
+
     try {
-      const id = Number(req.params.id);
       await contatoService.deletarContato(id);
       res.status(204).send();
     } catch (err) {
       if (err instanceof ContatoNaoEncontradoError) {
-        res.status(404).json({ message: (err as Error).message });
+        res.status(404).json({ message: err.message });
         return;
       }
       res.status(500).json({ message: "Erro interno" });

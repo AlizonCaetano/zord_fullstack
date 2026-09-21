@@ -12,7 +12,9 @@ export class Pessoa {
   @Column({ type: "varchar", length: 11, unique: true, nullable: false })
   cpf!: string;
 
-  @OneToMany(() => Contato, (contato: Contato) => contato.pessoa)
+  @OneToMany(() => Contato, (contato: Contato) => contato.pessoa, {
+    cascade: ["insert"],
+  })
   contatos!: Contato[];
 
   possuiContatos(): boolean {

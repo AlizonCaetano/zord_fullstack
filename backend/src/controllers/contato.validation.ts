@@ -1,13 +1,11 @@
 import { z } from "zod";
 
-const tipoSchema = z.boolean();
-const descricaoSchema = z.string();
-const idPessoaSchema = z.number();
+const descricaoSchema = z.string().trim().min(1).max(100);
 
 export const criarContatoSchema = z.object({
-  tipo: tipoSchema,
+  idPessoa: z.number().int().positive(),
+  tipo: z.boolean(),
   descricao: descricaoSchema,
-  idPessoa: idPessoaSchema,
 });
 
 export const atualizarContatoSchema = z.object({

@@ -4,6 +4,9 @@ import { ContatoController } from "../controllers/ContatoController";
 const router: Router = Router();
 const contatoController: ContatoController = new ContatoController();
 
+router.get("/", (req: Request, res: Response): Promise<void> =>
+  contatoController.listarTodos(req, res),
+);
 router.get("/pessoa/:idPessoa", (req: Request, res: Response): Promise<void> =>
   contatoController.listarPorPessoa(req, res),
 );
