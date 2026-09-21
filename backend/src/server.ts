@@ -1,9 +1,11 @@
 import "reflect-metadata";
 import express, { Request, Response } from "express";
 import { AppDataSource } from "./data-source";
+import { router } from "./routes";
 
 const app = express();
 app.use(express.json());
+app.use(router);
 
 app.get("/health", (req: Request, res: Response): void => {
   res.json({ status: "ok" });

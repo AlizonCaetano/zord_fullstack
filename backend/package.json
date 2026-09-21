@@ -6,7 +6,7 @@
     "test": "jest",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "docker:up": "docker compose -f ../docker-compose.yml up -d",
+    "docker:up": "docker compose -f ../compose.yaml up -d",
     "dev": "npm run docker:up && tsx watch src/server.ts",
     "typeorm": "typeorm-ts-node-commonjs",
     "migration:generate": "npm run typeorm -- migration:generate -d src/data-source.ts",
