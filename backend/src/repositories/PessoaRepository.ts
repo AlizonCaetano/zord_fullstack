@@ -24,12 +24,18 @@ export class PessoaRepository {
   async buscarPorNome(nome: string): Promise<Pessoa[]> {
     return this.repository
       .createQueryBuilder("pessoa")
+      .leftJoinAndSelect("pessoa.contatos", "contato")
       .where("pessoa.nome ILIKE :nome", { nome: `%${nome}%` })
+      .orderBy("pessoa.nome", "ASC")
+      .addOrderBy("contato.id", "ASC")
       .getMany();
   }
 
   async listarTodas(): Promise<Pessoa[]> {
-    return this.repository.find();
+    return this.repository.find({
+      relations: { contatos: true },
+      order: { nome: "ASC", contatos: { id: "ASC" } },
+    });
   }
 
   async atualizar(id: number, dados: Partial<Pessoa>): Promise<Pessoa | null> {
