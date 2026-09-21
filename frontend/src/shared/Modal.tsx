@@ -43,7 +43,7 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={titulo}
-        className="glass-pop w-full max-w-md rounded-md border p-6"
+        className="glass-pop max-h-[calc(100svh-2rem)] w-full max-w-lg overflow-y-auto rounded-md border p-6"
       >
         <div className="mb-6 flex items-start justify-between gap-4">
           <h2 className="font-serif text-2xl font-medium tracking-tight">

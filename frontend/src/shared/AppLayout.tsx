@@ -1,16 +1,9 @@
-import type { ReactNode } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { LogOut } from "lucide-react";
 
 import { clearToken } from "@/auth/session";
 import { cn } from "@/lib/utils";
 import { Wordmark } from "@/shared/Wordmark";
-
-type AppLayoutProps = {
-  title: string;
-  actions?: ReactNode;
-  children: ReactNode;
-};
 
 const linkClass = ({ isActive }: { isActive: boolean }): string =>
   cn(
@@ -20,16 +13,13 @@ const linkClass = ({ isActive }: { isActive: boolean }): string =>
       : "text-muted-foreground hover:text-foreground",
   );
 
-export function AppLayout({
-  title,
-  actions,
-  children,
-}: AppLayoutProps): React.JSX.Element {
+export function AppLayout(): React.JSX.Element {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const sair = (): void => {
     clearToken();
-    navigate("/login");
+    navigate("/login", { replace: true });
   };
 
   return (
@@ -55,14 +45,12 @@ export function AppLayout({
           </div>
         </nav>
 
-        <header className="flex items-end justify-between gap-4 px-8 pb-6 pt-10">
-          <h1 className="font-serif text-4xl font-medium tracking-tight">
-            {title}
-          </h1>
-          <div className="flex items-center gap-3">{actions}</div>
-        </header>
-
-        <main className="flex flex-1 flex-col gap-8 px-8 pb-8">{children}</main>
+        <div
+          key={location.pathname}
+          className="content-in flex flex-1 flex-col"
+        >
+          <Outlet />
+        </div>
       </div>
     </div>
   );
