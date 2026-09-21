@@ -1,45 +1,46 @@
 import { useCallback, useEffect, useState } from "react";
+import { Pencil } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Avatar } from "@/shared/Avatar";
 import { ConfirmDialog } from "@/shared/ConfirmDialog";
+import { ContatoIcone } from "@/shared/ContatoIcone";
 import { DataTable } from "@/shared/DataTable";
 import type { Column } from "@/shared/DataTable";
 import { EstadoVazio } from "@/shared/EstadoVazio";
-import { Modal } from "@/shared/Modal";
+import { ListaSkeleton } from "@/shared/ListaSkeleton";
 import { PageHeader } from "@/shared/PageHeader";
 import { RowMenu } from "@/shared/RowMenu";
 import { SearchInput } from "@/shared/SearchInput";
 import { ApiError } from "@/shared/api";
+import { ContatoForm } from "@/contato/ContatoForm";
+import type { ContatoCadastroValores } from "@/contato/contato.validation";
 import {
   atualizarContato,
   criarContato,
   excluirContato,
   listarContatos,
 } from "@/contato/contatoService";
-import type { Contato } from "@/contato/contatoService";
+import type { Contato, PessoaResumo } from "@/contato/contatoService";
 import { listarPessoas } from "@/pessoa/pessoaService";
-import type { Pessoa } from "@/pessoa/pessoaService";
-
-type Formulario = {
-  tipo: boolean;
-  descricao: string;
-  idPessoa: number;
-};
-
-const formularioVazio: Formulario = { tipo: false, descricao: "", idPessoa: 0 };
 
 export function ContatoPage(): React.JSX.Element {
   const [contatos, setContatos] = useState<Contato[]>([]);
-  const [pessoas, setPessoas] = useState<Pessoa[]>([]);
+  const [pessoas, setPessoas] = useState<PessoaResumo[]>([]);
   const [carregando, setCarregando] = useState<boolean>(true);
   const [erroLista, setErroLista] = useState<string | null>(null);
   const [busca, setBusca] = useState<string>("");
 
   const [emEdicao, setEmEdicao] = useState<Contato | null>(null);
   const [criando, setCriando] = useState<boolean>(false);
-  const [formulario, setFormulario] = useState<Formulario>(formularioVazio);
-  const [erroFormulario, setErroFormulario] = useState<string | null>(null);
+  const [erroServidor, setErroServidor] = useState<string | null>(null);
   const [salvando, setSalvando] = useState<boolean>(false);
   const [confirmandoExclusao, setConfirmandoExclusao] =
     useState<boolean>(false);
@@ -68,44 +69,39 @@ export function ContatoPage(): React.JSX.Element {
     void carregar();
   }, [carregar]);
 
-  const nomeDaPessoa = (idPessoa: number): string =>
-    pessoas.find((pessoa) => pessoa.id === idPessoa)?.nome ?? "—";
-
   const abrirCriacao = (): void => {
-    setFormulario({ ...formularioVazio, idPessoa: pessoas[0]?.id ?? 0 });
-    setErroFormulario(null);
+    setErroServidor(null);
     setCriando(true);
   };
 
   const abrirEdicao = (contato: Contato): void => {
-    setFormulario({
-      tipo: contato.tipo,
-      descricao: contato.descricao,
-      idPessoa: contato.idPessoa,
-    });
-    setErroFormulario(null);
+    setErroServidor(null);
     setEmEdicao(contato);
   };
 
   const fecharFormulario = (): void => {
     setCriando(false);
     setEmEdicao(null);
-    setErroFormulario(null);
+    setErroServidor(null);
   };
 
-  const salvar = async (): Promise<void> => {
+  const salvar = async (valores: ContatoCadastroValores): Promise<void> => {
     setSalvando(true);
-    setErroFormulario(null);
+    setErroServidor(null);
     try {
       if (emEdicao) {
-        await atualizarContato(emEdicao.id, formulario);
+        await atualizarContato(emEdicao.id, { descricao: valores.descricao });
       } else {
-        await criarContato(formulario);
+        await criarContato({
+          idPessoa: Number(valores.idPessoa),
+          tipo: valores.tipo === "email",
+          descricao: valores.descricao,
+        });
       }
       fecharFormulario();
       await carregar();
     } catch (e) {
-      setErroFormulario(
+      setErroServidor(
         e instanceof ApiError ? e.message : "Não foi possível salvar.",
       );
     } finally {
@@ -122,48 +118,82 @@ export function ContatoPage(): React.JSX.Element {
       await carregar();
     } catch (e) {
       setConfirmandoExclusao(false);
-      setErroFormulario(
+      setErroServidor(
         e instanceof ApiError ? e.message : "Não foi possível excluir.",
       );
     }
   };
 
-  const filtrados: Contato[] = contatos.filter((contato) =>
-    contato.descricao.toLowerCase().includes(busca.toLowerCase()),
+  const termo: string = busca.trim().toLowerCase();
+  const filtrados: Contato[] = contatos.filter(
+    (contato) =>
+      contato.descricao.toLowerCase().includes(termo) ||
+      contato.pessoa.nome.toLowerCase().includes(termo),
   );
 
   const columns: Column<Contato>[] = [
     {
-      key: "tipo",
-      header: "Tipo",
-      render: (c) => (c.tipo ? "E-mail" : "Telefone"),
-      sortValue: (c) => (c.tipo ? "email" : "telefone"),
-    },
-    {
-      key: "descricao",
-      header: "Descrição",
-      render: (c) => c.descricao,
+      key: "contato",
+      header: "Contato",
+      render: (c) => (
+        <div className="flex items-center gap-3">
+          <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full border bg-secondary/60">
+            <ContatoIcone email={c.tipo} />
+          </span>
+          <div className="min-w-0">
+            <p className="truncate font-medium">{c.descricao}</p>
+            <p className="text-xs text-muted-foreground">
+              {c.tipo ? "E-mail" : "Telefone"}
+            </p>
+          </div>
+        </div>
+      ),
       sortValue: (c) => c.descricao,
     },
     {
       key: "pessoa",
       header: "Pessoa",
-      render: (c) => nomeDaPessoa(c.idPessoa),
-      sortValue: (c) => nomeDaPessoa(c.idPessoa),
+      render: (c) => (
+        <div className="flex min-w-0 items-center gap-2">
+          <Avatar nome={c.pessoa.nome} tamanho="sm" />
+          <span className="truncate text-muted-foreground">
+            {c.pessoa.nome}
+          </span>
+        </div>
+      ),
+      sortValue: (c) => c.pessoa.nome,
     },
     {
       key: "acoes",
-      header: "",
+      header: "Ações",
+      acao: true,
       render: (c) => (
         <RowMenu
-          onEditar={() => abrirEdicao(c)}
           label={`Ações de ${c.descricao}`}
+          acoes={[
+            {
+              label: "Editar",
+              icone: Pencil,
+              onSelecionar: () => abrirEdicao(c),
+            },
+          ]}
         />
       ),
     },
   ];
 
   const formularioAberto: boolean = criando || emEdicao !== null;
+  const valoresIniciais: ContatoCadastroValores = emEdicao
+    ? {
+        idPessoa: String(emEdicao.pessoa.id),
+        tipo: emEdicao.tipo ? "email" : "telefone",
+        descricao: emEdicao.descricao,
+      }
+    : {
+        idPessoa: pessoas[0] ? String(pessoas[0].id) : "",
+        tipo: "telefone",
+        descricao: "",
+      };
 
   return (
     <>
@@ -171,23 +201,24 @@ export function ContatoPage(): React.JSX.Element {
         title="Contatos"
         count={carregando ? undefined : contatos.length}
         actions={
-          <Button onClick={abrirCriacao} disabled={pessoas.length === 0}>
+          <Button
+            onClick={abrirCriacao}
+            disabled={carregando || pessoas.length === 0}
+          >
             Novo contato
           </Button>
         }
       />
 
-      <main className="flex flex-1 flex-col gap-8 px-8 pb-8">
+      <main className="flex flex-1 flex-col gap-6 px-4 pb-6 md:gap-8 md:px-8 md:pb-8">
         <SearchInput
           value={busca}
           onChange={setBusca}
-          placeholder="Pesquisar por descrição"
+          placeholder="Pesquisar por contato ou pessoa"
         />
 
         {carregando ? (
-          <p className="py-16 text-center text-sm text-muted-foreground">
-            Carregando...
-          </p>
+          <ListaSkeleton />
         ) : erroLista ? (
           <div className="flex flex-col items-center gap-4 py-16">
             <p className="text-sm text-brand-red">{erroLista}</p>
@@ -198,116 +229,54 @@ export function ContatoPage(): React.JSX.Element {
         ) : contatos.length === 0 ? (
           <EstadoVazio
             titulo="Nenhum contato cadastrado"
-            descricao="Cadastre uma pessoa primeiro e depois adicione telefones e e-mails."
+            descricao={
+              pessoas.length === 0
+                ? "Cadastre uma pessoa primeiro. Todo contato pertence a alguém."
+                : "Adicione telefones e e-mails às pessoas cadastradas."
+            }
           />
         ) : (
           <DataTable
             columns={columns}
             rows={filtrados}
             getRowId={(c) => c.id}
+            onRowClick={abrirEdicao}
           />
         )}
       </main>
 
-      <Modal
-        aberto={formularioAberto}
-        titulo={emEdicao ? "Editar contato" : "Novo contato"}
-        onFechar={fecharFormulario}
+      <Dialog
+        open={formularioAberto}
+        onOpenChange={(abrir: boolean) => {
+          if (!abrir) fecharFormulario();
+        }}
       >
-        <div className="flex flex-col gap-5">
-          <div className="flex flex-col gap-2">
-            <label htmlFor="pessoa" className="text-sm text-muted-foreground">
-              Pessoa
-            </label>
-            <select
-              id="pessoa"
-              value={formulario.idPessoa}
-              onChange={(evento) =>
-                setFormulario((atual) => ({
-                  ...atual,
-                  idPessoa: Number(evento.target.value),
-                }))
-              }
-              className="h-10 w-full rounded-md border border-input bg-background/40 px-3 text-sm text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring"
-            >
-              {pessoas.map((pessoa) => (
-                <option key={pessoa.id} value={pessoa.id}>
-                  {pessoa.nome}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <label htmlFor="tipo" className="text-sm text-muted-foreground">
-              Tipo
-            </label>
-            <select
-              id="tipo"
-              value={formulario.tipo ? "email" : "telefone"}
-              onChange={(evento) =>
-                setFormulario((atual) => ({
-                  ...atual,
-                  tipo: evento.target.value === "email",
-                }))
-              }
-              className="h-10 w-full rounded-md border border-input bg-background/40 px-3 text-sm text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring"
-            >
-              <option value="telefone">Telefone</option>
-              <option value="email">E-mail</option>
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <label
-              htmlFor="descricao"
-              className="text-sm text-muted-foreground"
-            >
-              Descrição
-            </label>
-            <Input
-              id="descricao"
-              value={formulario.descricao}
-              onChange={(evento) =>
-                setFormulario((atual) => ({
-                  ...atual,
-                  descricao: evento.target.value,
-                }))
-              }
-              placeholder={
-                formulario.tipo ? "email@exemplo.com" : "(47) 99999-0000"
-              }
-            />
-          </div>
-
-          {erroFormulario && (
-            <p role="alert" className="text-sm text-brand-red">
-              {erroFormulario}
-            </p>
-          )}
-
-          <div className="mt-3 flex items-center justify-between border-t pt-5">
-            {emEdicao ? (
-              <Button
-                variant="ghostDestructive"
-                onClick={() => setConfirmandoExclusao(true)}
-              >
-                Excluir
-              </Button>
-            ) : (
-              <span />
-            )}
-            <div className="flex gap-3">
-              <Button variant="outline" onClick={fecharFormulario}>
-                Cancelar
-              </Button>
-              <Button onClick={() => void salvar()} disabled={salvando}>
-                {salvando ? "Salvando..." : "Salvar"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      </Modal>
+        <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-serif text-2xl font-medium">
+              {emEdicao ? "Editar contato" : "Novo contato"}
+            </DialogTitle>
+            <DialogDescription>
+              {emEdicao
+                ? `Contato de ${emEdicao.pessoa.nome}.`
+                : "Todo contato pertence a uma pessoa."}
+            </DialogDescription>
+          </DialogHeader>
+          <ContatoForm
+            key={emEdicao?.id ?? "novo"}
+            modo={emEdicao ? "editar" : "criar"}
+            pessoas={pessoas}
+            valoresIniciais={valoresIniciais}
+            erroServidor={erroServidor}
+            salvando={salvando}
+            onSalvar={(valores) => void salvar(valores)}
+            onCancelar={fecharFormulario}
+            onExcluir={
+              emEdicao ? () => setConfirmandoExclusao(true) : undefined
+            }
+          />
+        </DialogContent>
+      </Dialog>
 
       <ConfirmDialog
         aberto={confirmandoExclusao}

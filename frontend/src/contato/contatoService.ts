@@ -1,23 +1,33 @@
 import { apiFetch } from "@/shared/api";
 
+export type PessoaResumo = {
+  id: number;
+  nome: string;
+  cpf: string;
+};
+
 export type Contato = {
   id: number;
   tipo: boolean;
   descricao: string;
-  idPessoa: number;
+  pessoa: PessoaResumo;
 };
 
-export type ContatoEntrada = {
+export type ContatoCriacao = {
+  idPessoa: number;
   tipo: boolean;
   descricao: string;
-  idPessoa: number;
+};
+
+export type ContatoAtualizacao = {
+  descricao: string;
 };
 
 export function listarContatos(): Promise<Contato[]> {
   return apiFetch<Contato[]>("/contatos");
 }
 
-export function criarContato(dados: ContatoEntrada): Promise<Contato> {
+export function criarContato(dados: ContatoCriacao): Promise<Contato> {
   return apiFetch<Contato>("/contatos", {
     method: "POST",
     body: JSON.stringify(dados),
@@ -26,7 +36,7 @@ export function criarContato(dados: ContatoEntrada): Promise<Contato> {
 
 export function atualizarContato(
   id: number,
-  dados: ContatoEntrada,
+  dados: ContatoAtualizacao,
 ): Promise<Contato> {
   return apiFetch<Contato>(`/contatos/${id}`, {
     method: "PUT",
