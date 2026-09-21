@@ -6,6 +6,7 @@ import { NomeInvalidoError } from "../errors/NomeInvalidoError";
 import { CpfInvalidoError } from "../errors/CpfInvalidoError";
 import { CpfDuplicadoError } from "../errors/CpfDuplicadoError";
 import { PessoaNaoEncontradaError } from "../errors/PessoaNaoEncontradaError";
+import { ZodError } from "zod";
 
 const pessoaService = new PessoaService(new PessoaRepository());
 
@@ -16,6 +17,12 @@ export class PessoaController {
       const pessoa = await pessoaService.criarPessoa(dados.nome, dados.cpf);
       res.status(201).json(pessoa);
     } catch (err) {
+      if (err instanceof ZodError) {
+        res
+          .status(400)
+          .json({ message: "Dados inválidos", issues: err.issues });
+        return;
+      }
       if (err instanceof NomeInvalidoError || err instanceof CpfInvalidoError) {
         res.status(422).json({ message: (err as Error).message });
         return;
